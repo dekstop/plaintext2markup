@@ -1,0 +1,80 @@
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Plaintext to markup</title>
+  <script src="http://code.jquery.com/jquery-latest.min.js"></script>
+  <style type="text/css" media="screen">
+  #output {
+/*      background: #eeeeee;*/
+  }
+  </style>
+</head>
+<body>
+<form name="convert" accept-charset="utf-8" onsubmit="return false">
+<textarea name="plaintext" id="plaintext" rows="8" cols="40" placeholder="Text with list:&#10;- item a&#10;- item b&#10;  - sub-item c">
+</textarea>
+<p><input type="submit" value="Convert"></p>
+</form>
+<div id="output"></div>
+
+<script type="text/javascript">
+$(document).ready(function(event) {
+    $("form[name=convert]").submit(function(e) {
+        e.preventDefault();
+        var str = $('#plaintext').val();
+        var markup = convert(str);
+        $('#output').append(markup);
+        return false;
+    });
+});
+function convert(str) {
+    var indent = 0;         // current indent level
+    var prefixForIndent = { // spaces/tabs for current indent level
+        0: '',
+    }
+    var parentNodeForIndent = { // DOM parent nodes for current list tree
+        0: $('<div/>'),
+    }
+    var lines = str.split('\n');
+    for (var i=0; i<lines.length; i++) {
+        var line = lines[i];
+        // Horizontal divider?
+        if (line.match('^--- *')) {
+            indent = 0;
+            // parentNodeForIndent[indent].append('<hr/>');
+            parentNodeForIndent[indent].append(line);
+            parentNodeForIndent[indent].append('<br/>');
+        } else {
+            // Nope, text.
+            var parts = line.match('^([ \t]*[-\*]*) ?(.*)');
+            console.log(parts)
+            var curPrefix = parts[1];
+            var curLine = parts[2];
+            
+            // New sub-indent?
+            if (curPrefix.length>prefixForIndent[indent].length) {
+                indent++;
+                prefixForIndent[indent] = curPrefix;
+                parentNodeForIndent[indent] = $('<ul/>')
+                parentNodeForIndent[indent-1].append(parentNodeForIndent[indent]);
+            // Close previous indent?
+            } else while (curPrefix.length<prefixForIndent[indent].length) {
+                // TODO: also do this if prefix is all whitespace
+                indent--;
+            }
+            // In any case: add new line.
+            if (indent==0) {
+                // Root level
+                parentNodeForIndent[indent].append(curLine);
+                parentNodeForIndent[indent].append('<br/>');
+            } else {
+                // Bullet point
+                parentNodeForIndent[indent].append('<li>' + curLine + '</li>');
+            }
+        }
+    }
+    return parentNodeForIndent[0];
+}
+</script>
+</body>
+</html>
